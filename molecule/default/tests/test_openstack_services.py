@@ -2,75 +2,115 @@
 # ==============================================================================
 # Imports
 # ==============================================================================
+import pytest_rpc.helpers as helpers
+import os
 import pytest
-from pprint import pformat
-from munch import unmunchify
+import testinfra.utils.ansible_runner
 
+# ==============================================================================
+# Globals
+# ==============================================================================
+testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('shared-infra_hosts')[:1]
+
+
+# ==============================================================================
+# Helpers
+# ==============================================================================
+def service_enabled(service, run_on_host):
+    """ Verify if a service is enabled
+
+    Args:
+        service (str): an openstack service to query (e.g 'nova', 'glance')
+        run_on_host (testinfra.host.Host): Testinfra host fixture
+
+    Return:
+        bool: whether the queried service is enabled
+
+    """
+
+    cmd = ". openrc ; openstack service show -f value -c enabled {}".format(
+        service)
+    result = helpers.run_on_container(cmd, 'utility', run_on_host)
+
+    if result.stdout.lower() == 'true':
+        return True
+    else:
+        return False
 
 # ==============================================================================
 # Test Cases
 # ==============================================================================
 @pytest.mark.test_id('b2e417ee-23ea-11e9-aad3-9cdc71d6c120')
-@pytest.mark.jira('asc-1505')
-def test_openstack_services(os_api_conn, openstack_properties):
-    """Test to verify that all expected services are enabled
+@pytest.mark.jira('asc-1505', 'asc-1555')
+def test_openstack_nova_service(host):
+    """Test to verify that Nova service is enabled
 
     Args:
-        os_api_conn (openstack.connection.Connection): An authorized API
-            connection to the 'default' cloud on the OpenStack infrastructure.
-        openstack_properties(dict): OpenStack facts and variables from Ansible
-            which can be used to manipulate OpenStack objects.
+        host (testinfra.host.Host): Testinfra host fixture
     """
-    # Getting the right cinder service to check:
-    #    Cinder API V1 was removed in Queens release (os_version_major == 17)
-    #    (https://docs.openstack.org/releasenotes/horizon/rocky.html)
-    #
-    #    Cinder API V2 is deprecated in Rocky (os_version_major == 18)
-    #    https://developer.openstack.org/api-ref/block-storage/
-    #
-    #    Cinder API V3 is already in Queens and later.
 
-    services_not_found = []
-    services_not_enabled = []
+    assert service_enabled('nova', host)
 
-    if openstack_properties['os_version_major'] < 17:
-        cinder_service = 'cinder'
-    else:
-        cinder_service = 'cinderv3'
 
-    # List of OpenStack services that need to be checked:
-    checked_services = [cinder_service,
-                        'keystone',
-                        'neutron',
-                        'swift',
-                        'heat',
-                        'glance',
-                        'nova']
+@pytest.mark.test_id('d8e0c200-2a78-11e9-aad3-9cdc71d6c120')
+@pytest.mark.jira('asc-1505', 'asc-1555')
+def test_openstack_glance_service(host):
+    """Test to verify that Nova service is enabled
 
-    # Getting the list of all services
-    # (returning the list of Munch Python dictionaries)
-    all_services_list = os_api_conn.list_services()
+    Args:
+        host (testinfra.host.Host): Testinfra host fixture
+    """
 
-    for service in checked_services:
-        filtered_services = list(filter(lambda d:
-                                        d['name'].lower() == service,
-                                        all_services_list))
+    assert service_enabled('glance', host)
 
-        if len(filtered_services) == 0:
-            services_not_found.append(service)
-        else:
-            if not filtered_services[0]['enabled']:
-                services_not_enabled.append(service)
 
-    assert len(services_not_found) < 1,\
-        "\nServices not found:\n{}\nServices not enabled\n{}\n" \
-        "All services returned by list_service api: \n" \
-        "{}".format(services_not_found,
-                    services_not_enabled,
-                    pformat(unmunchify(all_services_list)))
+@pytest.mark.test_id('c66d7b5e-2a78-11e9-aad3-9cdc71d6c120')
+@pytest.mark.jira('asc-1505', 'asc-1555')
+def test_openstack_neutron_service(host):
+    """Test to verify that Nova service is enabled
 
-    assert len(services_not_enabled) < 1, \
-        "\nServices not enabled\n{}\n" \
-        "All services returned by list_service api: \n" \
-        "{}".format(services_not_enabled,
-                    pformat(unmunchify(all_services_list)))
+    Args:
+        host (testinfra.host.Host): Testinfra host fixture
+    """
+
+    assert service_enabled('neutron', host)
+
+
+@pytest.mark.test_id('b82ef310-2a78-11e9-aad3-9cdc71d6c120')
+@pytest.mark.jira('asc-1505', 'asc-1555')
+def test_openstack_keystone_service(host):
+    """Test to verify that Nova service is enabled
+
+    Args:
+        host (testinfra.host.Host): Testinfra host fixture
+    """
+
+    assert service_enabled('keystone', host)
+
+
+@pytest.mark.test_id('aadcb274-2a78-11e9-aad3-9cdc71d6c120')
+@pytest.mark.jira('asc-1505', 'asc-1555')
+def test_openstack_swift_service(host):
+    """Test to verify that Nova service is enabled
+
+    Args:
+        host (testinfra.host.Host): Testinfra host fixture
+    """
+
+    assert service_enabled('swift', host)
+
+
+@pytest.mark.test_id('89d09a96-2a78-11e9-aad3-9cdc71d6c120')
+@pytest.mark.jira('asc-1505', 'asc-1555')
+def test_openstack_heat_service(host):
+    """Test to verify that Nova service is enabled
+
+    Args:
+        host (testinfra.host.Host): Testinfra host fixture
+    """
+
+    assert service_enabled('heat', host)
+
+# TODO: will add cinder service in the list after resolving the
+# TODO: os_version_major for healthcheck, tech-debt ticket ASC-1627
