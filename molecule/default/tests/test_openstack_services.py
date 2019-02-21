@@ -112,5 +112,20 @@ def test_openstack_heat_service(host):
 
     assert service_enabled('heat', host)
 
-# TODO: will add cinder service in the list after resolving the
-# TODO: os_version_major for healthcheck, tech-debt ticket ASC-1627
+
+@pytest.mark.test_id('c975bb9c-3540-11e9-8442-6a00035510c0')
+@pytest.mark.jira('asc-1505', 'asc-1555', 'asc-1627')
+def test_openstack_cinder_service(host):
+    """Test to verify that Cinder service is enabled
+
+    Args:
+        host (testinfra.host.Host): Testinfra host fixture
+    """
+
+    cinder_version = helpers.get_cinder_major_version(host)
+    if cinder_version < 2:
+        cinder_service = 'cinder'
+    else:
+        cinder_service = 'cinderv{0}'.format(cinder_version)
+
+    assert service_enabled(cinder_service, host)
